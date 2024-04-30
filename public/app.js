@@ -11,12 +11,8 @@ window.addEventListener('load', _ => {
     let paused = false;
     let started = false;
     let dateStarted;
-    let dateStopped;
     let timerData;
 
-    window.addEventListener('beforeunload', _ => {
-        started && stopTimer();
-    });
 
     // make date line
     const makeDateLine = date => {
@@ -58,6 +54,10 @@ window.addEventListener('load', _ => {
         }
         setWorkDay();
     });
+
+
+    // FUNCTIONS
+    
 
     // show error on invalid date
     const dateError = i => {
@@ -115,13 +115,7 @@ window.addEventListener('load', _ => {
         }, 1000);
     }
     const stopTimer = _ => {
-        dateStopped = new Date();
-        timerData = {
-            date: dateInput.value,
-            started: dateStarted.toLocaleString().match(/\d{1,2}:\d{1,2}:\d{1,2} (AM|PM)/)[0],
-            stopped: dateStopped.toLocaleString().match(/\d{1,2}:\d{1,2}:\d{1,2} (AM|PM)/)[0],
-            time: time
-        }
+        timerData = preapareData();
         clearInterval(timer);
         saveData();
     }
@@ -129,11 +123,23 @@ window.addEventListener('load', _ => {
         clearInterval(timer);
     }
 
+    // prepare data for saving
+    const preapareData = _ => {
+        return {
+            date: dateInput.value,
+            started: dateStarted.toLocaleString().match(/\d{1,2}:\d{1,2}:\d{1,2} (AM|PM)/)[0],
+            stopped: new Date().toLocaleString().match(/\d{1,2}:\d{1,2}:\d{1,2} (AM|PM)/)[0],
+            time: time
+        }
+    }
+
+
     // finish timer after sving data to db
     const finishTimer = _ => {
         dateInput.disabled = false;
         time = 0;
         document.getElementById('timer').innerText = '00:00:00';
+        localStorage.removeItem('timer');
     }
 
     // save timer data to server db
@@ -155,11 +161,18 @@ window.addEventListener('load', _ => {
     }
 
     // get timer data from server db
-    const getData = async _ => {
+    const getData = async (firstTime = false) => {
         const response = await fetch('/get-data');
         if (response.ok) {
             const data = await response.json();
             makeList(data);
+            if (firstTime) {
+                const lsData = JSON.parse(localStorage.getItem('timer'));
+                if (lsData) {
+                    timerData = lsData;
+                    saveData();
+                }
+            }
         } else {
             showMessages('error', 'Error getting data');
         }
@@ -247,5 +260,17 @@ window.addEventListener('load', _ => {
         return firstDate;
     }
 
-    getData();
+    // write data to ls
+
+    const writeDataLs = _ => {
+        setInterval(_ => {
+            if (!started || paused) {
+                return;
+            }
+            localStorage.setItem('timer', JSON.stringify(preapareData()));
+        }, 10000);
+    }
+
+    getData(true);
+    writeDataLs();
 });
