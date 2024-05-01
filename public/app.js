@@ -12,6 +12,8 @@ window.addEventListener('load', _ => {
     let started = false;
     let dateStarted;
     let timerData;
+    let beforePauseTime = 0;
+    let startMarker;
 
 
     // make date line
@@ -107,7 +109,8 @@ window.addEventListener('load', _ => {
 
     // timer functions start, stop, pause
     const startTimer = _ => {
-        dateStarted = new Date();
+        dateStarted || (dateStarted = new Date());
+        startMarker = new Date().getTime();
         dateInput.disabled = true;
         timer = setInterval(_ => {
             time++;
@@ -120,6 +123,7 @@ window.addEventListener('load', _ => {
         saveData();
     }
     const pauseTimer = _ => {
+        beforePauseTime = time;
         clearInterval(timer);
     }
 
@@ -138,6 +142,10 @@ window.addEventListener('load', _ => {
     const finishTimer = _ => {
         dateInput.disabled = false;
         time = 0;
+        dateStarted = null;
+        paused = false;
+        started = false;
+        beforePauseTime = 0;
         document.getElementById('timer').innerText = '00:00:00';
         localStorage.removeItem('timer');
     }
@@ -262,15 +270,18 @@ window.addEventListener('load', _ => {
 
     // write data to ls
 
-    const writeDataLs = _ => {
+    const saveAndSyncTime = _ => {
         setInterval(_ => {
             if (!started || paused) {
                 return;
             }
+            const now = new Date().getTime();
+            const diff = now - startMarker;
+            time = Math.floor(diff / 1000) + beforePauseTime;
             localStorage.setItem('timer', JSON.stringify(preapareData()));
         }, 10000);
     }
 
     getData(true);
-    writeDataLs();
+    saveAndSyncTime();
 });
